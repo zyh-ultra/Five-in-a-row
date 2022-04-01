@@ -1,7 +1,8 @@
 // ipc
-export const IPCMESSAGETEST = "IPCMESSAGETEST";
-
+export const IPCLOGINSUCCESS = "IPCLOGINSUCCESS";
+export const IPCLOGINERROR = "IPCLOGINERROR";
 
 
 
 //pubsub
+export const LOGINSUCCESS = "LOGINSUCCESS";

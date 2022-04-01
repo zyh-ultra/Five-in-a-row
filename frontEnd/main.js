@@ -1,12 +1,14 @@
 const { app, BrowserWindow, dialog, globalShortcut, ipcMain  } = require('electron')
 const path = require('path')
-const {IPCMESSAGETEST} = require('./channel.js')
+const {IPCLOGINSUCCESS, IPCLOGINERROR} = require('./channel.js')
+
+let win = null
 
 function createWindow () {
-  const win = new BrowserWindow({
-    width: 1500,
-    height: 800,
-    // resizable: false,
+  win = new BrowserWindow({
+    width: 390,
+    height: 350,
+    resizable: false,
     title: "Five-in-a-row",
     icon: "./public/favicon.ico",
     autoHideMenuBar: true,
@@ -16,41 +18,27 @@ function createWindow () {
       preload:  path.join(__dirname, 'preload.js')
     }   
   })
-  win.loadURL('http://localhost:3000/#/test')
+  win.loadURL('http://localhost:3000/#/')
   win.isAlwaysOnTop(true)
   win.openDevTools();
-  console.log('create window')
+  // console.log('create window')
 
 
 }
 
-ipcMain.on(IPCMESSAGETEST, (event, arg) => {
-    dialog.showOpenDialog({ 
-      title: arg,
-      properties: [ 'openFile'],
-      filters: [
-        // { name: 'Images', extensions: ['jpg', 'png', 'gif'] },
-        // { name: 'Movies', extensions: ['mkv', 'avi', 'mp4'] },
-        // { name: 'Custom File Type', extensions: ['as'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    })
-    .then(res => {
-      // console.log(res);
-      event.sender.send("ss", res)
-    })
-    
+ipcMain.on(IPCLOGINSUCCESS, (event, arg) => {
+    win.setContentSize(1200, 800);
+    win.setResizable(true);
+    event.returnValue = ""
+})
+
+ipcMain.on(IPCLOGINERROR, (event, arg) => {
+  win.setContentSize(390, 350);
+  win.setResizable(false);
 })
 
 app.whenReady().then(() => {
   createWindow();
-  let ret = globalShortcut.register("ctrl+j", () => {
-      dialog.showMessageBox({
-        title: "Five-in-a-row",
-        message: "Five-in-a-row Message",
-        detail: "Five-in-a-row Detail",
-      });
-  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

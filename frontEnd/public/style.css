@@ -1,4 +1,20 @@
 html {
     font-size: calc(10px + 2vmin);
     /* background-color: aquamarine; */
-  }
+}
+
+.loginWrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  min-width: 350px;
+}
+
+.loginRow {
+  margin-top: 15px;
+}

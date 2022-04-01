@@ -1,6 +1,7 @@
 const Koa = require('koa');
 const Router = require('koa-router'); 
 const ws = require('ws');
+const svgCaptcha = require('svg-captcha')
 
 //实例化
 const app = new Koa();
@@ -8,19 +9,41 @@ const router = new Router();
 const wss = new ws.Server({port: 5051});
 
 // 保存数据
-let users = [];
+let users = new Map();
+let usersState = new Map();
 let sockets = new Map();
+
+// 验证码配置
+const codeConfig = {
+    size: 4, // 验证码长度
+    ignoreChars: '0oO1ilI', // 验证码字符中排除 0oO1ilI
+    noise: 2, // 干扰线条的数量
+    width: 140,
+    height: 45,
+    fontSize: 50,
+    // color: true, // 验证码的字符是否有颜色，默认没有，如果设定了背景，则默认有
+    // background: '#eee',
+};
 
 //配置路由 
 //ctx 上下文 context   req,res等信息都放在ctx里面
 router.get('/', async (ctx)=> {
     ctx.body="看啥看！这就是个纯后端";//返回数据  原生里面的res.send()
 })
-
+// 判断当前用户名是否被使用
 router.get('/canLogin/:username', async (ctx) => {
-    ctx.body = {canLogin: users.indexOf(ctx.params.username) == -1}
+    // console.log(ctx.params.username)
+    ctx.body = {canLogin: !users.has(ctx.params.username)}
     // ctx.body = ctx.params.username
 })
+// 获取验证码
+router.get('/verif', async (ctx) => {
+    let captcha = svgCaptcha.create(codeConfig);
+    // console.log(captcha.text.toLowerCase())
+    ctx.body = {svg: captcha.data, code: captcha.text.toLowerCase()};
+})
+// 获取当前的在线用户，及其状态{0: 在线空闲， 1：在房间中， 2:在对局}
+
 
 //启动路由
 app.use(router.routes()); 
@@ -32,32 +55,28 @@ wss.on('connection', function connect(ws, req) {
         let wsmsg = JSON.parse(msg); 
         switch (wsmsg.type) {
             case "Login":
-                sockets.set(wsmsg.username, ws);
-                users.push(wsmsg.username)
+                if (users.has(wsmsg.username)) {
+                    ws.send(JSON.stringify({type: "LoginError"}));
+                }
+                else {
+                    users.set(wsmsg.username, ws);
+                    usersState.set(wsmsg.password, {state: 0})
+                    sockets.set(ws, wsmsg.username);
+                }
                 // console.log(wsmsg.username)
-                break;
-            case "Logout":
-                sockets.delete(wsmsg.username);
-                let index = users.indexOf(wsmsg.username);
-                if (index != -1)
-                    users.splice(index, 1)
-                console.log(wsmsg.username)
+                // ws.send(JSON.stringify({type: "LoginError"}));
                 break;
             default:
                 console.log(wsmsg)
 
         }
     });
-    ws.on("open", function(e) {
-        console.log("open", e);
-    });
     ws.on('close' ,function (e) {
-        console.log(e);
-        console.log("close");
-    });
-    ws.on("error", function(e) {
-        console.log(e);
-        console.log("error")
+        if (!sockets.has(ws)) return;
+        let user = sockets.get(ws);
+        sockets.delete(ws);
+        users.delete(user);
+        usersState.delete(user);
     });
 })
 
