@@ -58,8 +58,10 @@ class Home extends Component {
 					
 				</Row>  
             </Header>
-            <Content>
+            <Content style={{position: "relative"}}>
+              <div style={{position: "absolute", top: "50%", left: "50%", transform:"translate(-50%, -50%)", width:"calc(90vmin - 64px)", height: "calc(90vmin - 64px)", backgroundColor:"red"}}>
 
+              </div>
             </Content>
           </Layout>
 		  <Sider width="300px" collapsible={true} reverseArrow={true} collapsedWidth={0} theme="light" breakpoint="md" trigger= {<RetweetOutlined />}>
@@ -68,7 +70,7 @@ class Home extends Component {
 					  this.state.chattings.map((val, i) => <ChatCard key={i} kind={val.kind} content={val.content}></ChatCard>)
 				  }
 			  </div>
-			  <Row style={{position: "absolute", bottom: "0px"}}>
+			  <Row style={{position: "absolute", bottom: "0px"}} justify="space-around">
 				  <Col span={23}><Input value={this.state.chatInput} onChange={e => this.setState({chatInput: e.target.value})} onKeyDown={this.handleKeyDown}></Input></Col>
 				  <Col span={1}><Button onClick={this.speakToRival} disabled={this.state.rival === ""}>发送</Button></Col>
 			  </Row>
