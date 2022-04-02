@@ -1,30 +1,82 @@
 import React, { Component } from 'react'
 import {useNavigate} from "react-router-dom"
-import {message, Spin, Modal } from "antd"
+import {message, Spin, Modal, Layout, Row, Col, Avatar, Button, Input } from "antd"
 import { IPCLOGINERROR, STARTINVITE } from '../../channel';
 import Userlist from "../../components/Userlist"
 import PubSub from "pubsub-js"
+import { RetweetOutlined, UserOutlined  } from '@ant-design/icons';
+import ChatCard from '../../components/CharCard';
+
+const {Sider, Header, Content} = Layout
 
 const withNavigation = (Component) => {
   return (props) => <Component {...props} navigate={useNavigate()} />;
 };
 
 class Home extends Component {
+	constructor(props) {
+		super(props);
+		this.chatRef = React.createRef();
+	}
+
   state = {
     username: "",
     inviteSpining: false,
     rival: "",
     modalVisibility: false,
     inviter: "",
+	preparing: false,
+	order: 0,
+	chattings: [],
+	chatInput: "",
   }
 
   render() {
     return (
-      <div>
-        Home {this.state.username} rival: {this.state.rival}
-        <Spin spinning={this.state.inviteSpining} tip="inviting...">
-          <Userlist></Userlist>
-        </Spin>
+      <div className="homeWrapper">
+        <Layout style={{ height: "100%"}}> 
+          <Layout>
+            <Header style={{ backgroundColor: "white", paddingLeft: "5vw", paddingRight: "5vw"}}>
+				<Row align="middle" justify="space-between">
+					{
+						this.state.rival === "" ? 
+						<Col span={24}>
+							<Spin spinning={this.state.inviteSpining} tip="inviting...">
+								<Userlist></Userlist>
+							</Spin>
+						</Col> : 
+						<>
+							<Col span={8}>
+								<Avatar style={{ backgroundColor: '#87d068' }} icon={<UserOutlined />} /> {this.state.rival}
+							</Col>
+							<Col span={10}>
+								<Button style={{float: "right"}} type="primary" loading={this.state.preparing} onClick={this.onPrepareClick}>准备</Button>
+								<Button style={{float: "right"}} type="primary" danger onClick={() => {this.ws.send(JSON.stringify({type:"Leave", from: this.state.username, to: this.state.rival}))}}>离开</Button>
+							</Col>
+						</>
+					}
+					
+				</Row>  
+            </Header>
+            <Content>
+
+            </Content>
+          </Layout>
+		  <Sider width="300px" collapsible={true} reverseArrow={true} collapsedWidth={0} theme="light" breakpoint="md" trigger= {<RetweetOutlined />}>
+			  <div className="chatContent" ref={this.chatRef}>
+				  {
+					  this.state.chattings.map((val, i) => <ChatCard key={i} kind={val.kind} content={val.content}></ChatCard>)
+				  }
+			  </div>
+			  <Row style={{position: "absolute", bottom: "0px"}}>
+				  <Col span={23}><Input value={this.state.chatInput} onChange={e => this.setState({chatInput: e.target.value})} onKeyDown={this.handleKeyDown}></Input></Col>
+				  <Col span={1}><Button onClick={this.speakToRival} disabled={this.state.rival === ""}>发送</Button></Col>
+			  </Row>
+		  </Sider>
+        </Layout>
+
+
+        
         
 
         {/* 被邀请对话框 */}
@@ -75,9 +127,10 @@ class Home extends Component {
     this.ws.onopen = () => {
       this.connectCount++;
       this.ws.send(JSON.stringify({type: "Login", username: this.state.username}));
+	  message.success("连接服务器成功！");
     }
     this.ws.onmessage = (e) => {
-      console.log(e);
+    //   console.log(e);
       let data = JSON.parse(e.data);
       switch (data.type) {
         case "LoginError":
@@ -103,7 +156,30 @@ class Home extends Component {
           this.setState({rival: data.rival, inviteSpining: false});
           message.success("成功加入房间，对手：" + data.rival);
           break;
-
+		case "Leave":
+		  // 还原所有设置
+		  this.setState({rival: "", inviter: "", preparing: false, chattings: [], chatInput: ""});
+		  console.log("Leave");
+		  break;
+		case "Prepare":
+		  message.info(data.from + " is ready to play!");
+		  break;
+		case "Start":
+		  message.info("order" + data.order);
+		  break;
+		case "End":
+		  // 销毁棋盘和preparing
+		  this.setState({preparing: false});
+		  break;
+		case "Speak":
+		  let chattings = this.state.chattings;
+		  chattings.push({kind: 1, content: data.content});
+		//   console.log("Speak" + data.content);
+		setTimeout(() => {
+			this.chatRef.current.scrollTop = this.chatRef.current.scrollHeight;
+		}, 100);
+		  this.setState({chattings: chattings});
+		  break;
         default:
           console.log(data);
       }
@@ -129,6 +205,26 @@ class Home extends Component {
   modalOk = () => {
     this.setState({modalVisibility: false});
     this.ws.send(JSON.stringify({type:"AcceptInvite", to: this.state.inviter, from: this.state.username}));
+  }
+
+  onPrepareClick = () => {
+	this.setState({preparing: true});
+	this.ws.send(JSON.stringify({type: "Prepare", from: this.state.username, to: this.state.rival}));
+  }
+
+  speakToRival = () => {
+	  let {chatInput, chattings} = this.state;
+	  chattings.push({kind: 0, content: chatInput});
+	  this.setState({chatInput: "", chattings});
+	this.ws.send(JSON.stringify({type:"Speak", to: this.state.rival, msg: chatInput}));
+	setTimeout(() => {
+		this.chatRef.current.scrollTop = this.chatRef.current.scrollHeight;
+	}, 100);
+  }
+
+  handleKeyDown = (event) => {
+	  if (event.keyCode === 13)
+	  	this.speakToRival();
   }
 
 }

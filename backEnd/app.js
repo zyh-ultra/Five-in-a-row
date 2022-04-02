@@ -12,6 +12,7 @@ const wss = new ws.Server({port: 5051});
 let users = new Map();
 let usersState = new Map();
 let sockets = new Map();
+let prepares = new Map();
 
 // 验证码配置
 const codeConfig = {
@@ -59,7 +60,8 @@ app.use(router.allowedMethods());
 // wss配置
 wss.on('connection', function connect(ws, req) {
     ws.on("message", function (msg) {
-        let wsmsg = JSON.parse(msg); 
+        let wsmsg = JSON.parse(msg);
+        let userAInfo, userBInfo, wsA, wsB; 
         switch (wsmsg.type) {
             case "Login":
                 if (users.has(wsmsg.username)) {
@@ -72,9 +74,9 @@ wss.on('connection', function connect(ws, req) {
                 }
                 break;
             case "Invite":
-                let userBInfo = usersState.get(wsmsg.to);
+                userBInfo = usersState.get(wsmsg.to);
                 if (userBInfo && userBInfo.state === 0) {
-                    let wsB = users.get(wsmsg.to);
+                    wsB = users.get(wsmsg.to);
                     wsB.send(JSON.stringify({type: 'Invited', from: wsmsg.from}))
                 }
                 else {
@@ -82,12 +84,14 @@ wss.on('connection', function connect(ws, req) {
                 }
                 break;
             case "AcceptInvite":
-                let userAInfo = usersState.get(wsmsg.to);
+                userAInfo = usersState.get(wsmsg.to);
                 if (userAInfo && userAInfo.state === 0) {
-                    let wsA = users.get(wsmsg.to);
-                    let userBInfo = usersState.get(wsmsg.from);
+                    wsA = users.get(wsmsg.to);
+                    userBInfo = usersState.get(wsmsg.from);
                     userAInfo.state = 1;
                     userBInfo.state = 1;
+                    userAInfo.rival = wsmsg.from;
+                    userBInfo.rival = wsmsg.to;
                     usersState.set(wsmsg.to, userAInfo);
                     usersState.set(wsmsg.from, userBInfo);
                     wsA.send(JSON.stringify({type: 'EnterRoom', rival: wsmsg.from}));
@@ -98,8 +102,46 @@ wss.on('connection', function connect(ws, req) {
                 }
                 break;
             case "RefuseInvite":
-                let wsA = users.get(wsmsg.to);
+                wsA = users.get(wsmsg.to);
                 wsA.send(JSON.stringify({type:"InviteFail"}));
+                break;
+            case "Leave":
+                console.log("Leave -- ")
+                userAInfo = usersState.get(wsmsg.from);
+                userBInfo = usersState.get(wsmsg.to);
+                wsB = users.get(wsmsg.to);
+                userAInfo.state = 0;
+                userBInfo.state = 0;
+                delete userAInfo['rival'];
+                delete userBInfo['rival'];
+                usersState.set(wsmsg.from, userAInfo);
+                usersState.set(wsmsg.to, userBInfo);
+                prepares.delete(wsmsg.from);
+                prepares.delete(wsmsg.to);
+                wsB.send(JSON.stringify({type: "Leave"}));
+                ws.send(JSON.stringify({type: "Leave"}));
+                break;
+            case "Prepare":
+                wsA = users.get(wsmsg.to);
+                if (prepares.has(wsmsg.to)) {
+                    prepares.delete(wsmsg.to);
+                    userAInfo = usersState.get(wsmsg.to);
+                    userBInfo = usersState.get(wsmsg.from);
+                    userAInfo.state = 2;
+                    userBInfo.state = 2;
+                    usersState.set(wsmsg.to, userAInfo);
+                    usersState.set(wsmsg.from, userBInfo);
+                    wsA.send(JSON.stringify({type: "Start", order: 0}));
+                    ws.send(JSON.stringify({type: "Start", order: 1}));
+                }
+                else {
+                    prepares.set(wsmsg.from, 0);
+                    wsA.send(JSON.stringify({type: "Prepare", from: wsmsg.from}));
+                }
+                break;
+            case "Speak":
+                wsA = users.get(wsmsg.to);
+                wsA.send(JSON.stringify({type:"Speak", content: wsmsg.msg}));
                 break;
             default:
                 console.log(wsmsg)
@@ -109,6 +151,15 @@ wss.on('connection', function connect(ws, req) {
     ws.on('close' ,function (e) {
         if (!sockets.has(ws)) return;
         let user = sockets.get(ws);
+        let userInfo = usersState.get(user);
+        if (userInfo.state !== 0) {
+            let wsRival = users.get(userInfo.rival);
+            // console.log(user, userInfo.rival, "leave")
+            if (wsRival)
+                wsRival.send(JSON.stringify({type: "Leave"}));
+            prepares.delete(user);
+            prepares.delete(userInfo.rival);
+        }
         sockets.delete(ws);
         users.delete(user);
         usersState.delete(user);

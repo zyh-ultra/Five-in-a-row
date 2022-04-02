@@ -15,7 +15,7 @@ export default class Userlist extends Component {
   render() {
     return (
       <div>
-        <Button onClick={this.getUserList}><RedoOutlined /></Button>
+        
         <Select className="userlistSelect" showSearch placeholder="Select a person" optionFilterProp="children"
             filterOption={(input, option) =>
                 option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
@@ -42,6 +42,7 @@ export default class Userlist extends Component {
                 )
             })}
         </Select>
+        <Button onClick={this.getUserList}><RedoOutlined /></Button>
         <Button onClick={this.invite}>邀请<UserAddOutlined /></Button>
       </div>
     )
