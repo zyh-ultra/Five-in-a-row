@@ -43,7 +43,14 @@ router.get('/verif', async (ctx) => {
     ctx.body = {svg: captcha.data, code: captcha.text.toLowerCase()};
 })
 // 获取当前的在线用户，及其状态{0: 在线空闲， 1：在房间中， 2:在对局}
-
+router.get('/getUserList', async (ctx) => {
+    let res = [];
+    let keys = Array.from(usersState.keys());
+    keys.map((val) => {
+        res.push({user: val, info: usersState.get(val)});
+    });
+    ctx.body = JSON.stringify(res);
+})
 
 //启动路由
 app.use(router.routes()); 
@@ -60,11 +67,39 @@ wss.on('connection', function connect(ws, req) {
                 }
                 else {
                     users.set(wsmsg.username, ws);
-                    usersState.set(wsmsg.password, {state: 0})
+                    usersState.set(wsmsg.username, {state: 0})
                     sockets.set(ws, wsmsg.username);
                 }
-                // console.log(wsmsg.username)
-                // ws.send(JSON.stringify({type: "LoginError"}));
+                break;
+            case "Invite":
+                let userBInfo = usersState.get(wsmsg.to);
+                if (userBInfo && userBInfo.state === 0) {
+                    let wsB = users.get(wsmsg.to);
+                    wsB.send(JSON.stringify({type: 'Invited', from: wsmsg.from}))
+                }
+                else {
+                    ws.send(JSON.stringify({type: "InviteFail"}));
+                }
+                break;
+            case "AcceptInvite":
+                let userAInfo = usersState.get(wsmsg.to);
+                if (userAInfo && userAInfo.state === 0) {
+                    let wsA = users.get(wsmsg.to);
+                    let userBInfo = usersState.get(wsmsg.from);
+                    userAInfo.state = 1;
+                    userBInfo.state = 1;
+                    usersState.set(wsmsg.to, userAInfo);
+                    usersState.set(wsmsg.from, userBInfo);
+                    wsA.send(JSON.stringify({type: 'EnterRoom', rival: wsmsg.from}));
+                    ws.send(JSON.stringify({type: "EnterRoom", rival: wsmsg.to}));
+                }
+                else {
+                    ws.send(JSON.stringify({type:"InviteFail"}));
+                }
+                break;
+            case "RefuseInvite":
+                let wsA = users.get(wsmsg.to);
+                wsA.send(JSON.stringify({type:"InviteFail"}));
                 break;
             default:
                 console.log(wsmsg)

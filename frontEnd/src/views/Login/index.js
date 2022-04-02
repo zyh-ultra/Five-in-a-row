@@ -2,7 +2,6 @@ import React, { Component } from 'react';
 import {Input, Button, Divider, Row, Col, message} from "antd"
 import { UserOutlined, VerifiedOutlined } from '@ant-design/icons'
 import axios from "axios"
-import PubSub from 'pubsub-js'
 import {IPCLOGINSUCCESS} from '../../channel'
 import {useNavigate} from "react-router-dom"
 
@@ -53,6 +52,9 @@ class Login extends Component {
 
   componentDidMount() {
     this.getVerif();
+    if (window.ws) {
+      window.ws.close();
+    }
   }
 
   login = () =>{
@@ -61,7 +63,7 @@ class Login extends Component {
     window.username = this.state.username;
     this.props.navigate('/home')
     if (window.electron) {
-      window.ipcRenderer.sendSync(IPCLOGINSUCCESS)
+      window.ipcRenderer.send(IPCLOGINSUCCESS)
     }
   }
 

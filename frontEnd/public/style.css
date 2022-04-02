@@ -18,3 +18,7 @@ html {
 .loginRow {
   margin-top: 15px;
 }
+
+.userlistSelect {
+  width: 200px;
+}

@@ -6,3 +6,4 @@ export const IPCLOGINERROR = "IPCLOGINERROR";
 
 //pubsub
 export const LOGINSUCCESS = "LOGINSUCCESS";
+export const STARTINVITE = "STARTINVITE";

@@ -29,12 +29,13 @@ function createWindow () {
 ipcMain.on(IPCLOGINSUCCESS, (event, arg) => {
     win.setContentSize(1200, 800);
     win.setResizable(true);
-    event.returnValue = ""
+    win.center();
 })
 
 ipcMain.on(IPCLOGINERROR, (event, arg) => {
   win.setContentSize(390, 350);
   win.setResizable(false);
+  win.center();
 })
 
 app.whenReady().then(() => {
