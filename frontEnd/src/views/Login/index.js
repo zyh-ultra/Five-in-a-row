@@ -39,7 +39,7 @@ class Login extends Component {
             <Input value={this.state.inputCode} onChange={(e) => this.setState({ inputCode: e.target.value })} placeholder="输入验证码" prefix={<VerifiedOutlined />}
             status={this.state.inputCode.toLocaleLowerCase() === this.state.verifyCode ? "success" : "error"}></Input>
           </Col>
-          <Col span={11}><a href="#" onClick={this.getVerif} ref={this.svgref}></a></Col>
+          <Col span={11}><a  onClick={this.getVerif} ref={this.svgref}></a></Col>
         </Row>
         <Row className="loginRow" justify="center">
           <Button onClick={this.login} disabled={(!this.state.canLogin) || (this.state.inputCode.toLocaleLowerCase() !== this.state.verifyCode)}>登录</Button>

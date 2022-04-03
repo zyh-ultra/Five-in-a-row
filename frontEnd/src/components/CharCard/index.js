@@ -1,22 +1,20 @@
 import React, { Component } from 'react'
-import { Avatar, Tooltip, Popover, Card } from 'antd';
+import { Avatar, Card } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 
 export default class ChatCard extends Component {
   render() {
-    let floating, color, direction, textAlign, title, extra;
+    let floating, color, textAlign
     if (this.props.kind) {
         // 对方
         floating = "left";
         color = "cyan";
-        direction = "righttop";
         textAlign = "left";
         // title = <Avatar style={{ backgroundColor: color }} icon={<UserOutlined />} size={22} />
     }
     else {
         floating = "right";
         color = "gold";
-        direction = "lefttop";
         textAlign = "right";
         // extra = <Avatar style={{ backgroundColor: color }} icon={<UserOutlined />} size={22} />
     }

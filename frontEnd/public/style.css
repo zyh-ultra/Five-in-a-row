@@ -94,10 +94,22 @@ html {
 
 .black-piece {
   background-color: black;
-  box-shadow: -5px 5px 10px black;
+  /* box-shadow: -3px 3px 5px black; */
 }
 
 .white-piece {
   background-color: white;
-  box-shadow: -5px 5px 10px black;
+  box-shadow: -3px 3px 5px black;
+}
+
+.last-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: red;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  z-index: 100;
 }

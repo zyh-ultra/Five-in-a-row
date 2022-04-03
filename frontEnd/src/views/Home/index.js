@@ -1,10 +1,10 @@
 import React, { Component } from 'react'
 import {useNavigate} from "react-router-dom"
-import {message, Spin, Modal, Layout, Row, Col, Avatar, Button, Input } from "antd"
+import {message, Spin, Modal, Layout, Row, Col, Avatar, Button, Input, Tag } from "antd"
 import { IPCLOGINERROR, STARTINVITE } from '../../channel';
 import Userlist from "../../components/Userlist"
 import PubSub from "pubsub-js"
-import { RetweetOutlined, UserOutlined  } from '@ant-design/icons';
+import { RetweetOutlined, UserOutlined, SyncOutlined, ClockCircleOutlined  } from '@ant-design/icons';
 import ChatCard from '../../components/CharCard';
 
 const {Sider, Header, Content} = Layout
@@ -31,7 +31,10 @@ class Home extends Component {
       chattings: [],
       chatInput: "",
       border: border,
-      myTurn: false
+      myTurn: false,
+      rivalPrepare: false,
+      lastI: -1,
+      lastJ: -1,
     }
 	}
 
@@ -52,11 +55,22 @@ class Home extends Component {
 							</Spin>
 						</Col> : 
 						<>
-							<Col span={8}>
-								<Avatar style={{ backgroundColor: '#87d068' }} icon={<UserOutlined />} /> 对手：{this.state.rival}
+							<Col span={9}>
+								<Avatar style={{ backgroundColor: '#87d068' }} icon={<UserOutlined />} /> 对手：{this.state.rival} {this.state.rivalPrepare && <Tag color="green">已准备</Tag>}
 							</Col>
-							<Col span={10}>
-								<Button style={{float: "right"}} type="primary" loading={this.state.preparing} onClick={this.onPrepareClick}>准备</Button>
+              <Col span={4}>
+                { this.state.order !== 0 && 
+                (this.state.myTurn ?
+                    <Tag style={{display: 'block'}} icon={<SyncOutlined spin />} color="processing">你的回合</Tag> :
+                    <Tag style={{display: 'block'}} icon={<ClockCircleOutlined />} color="warning">对手回合</Tag>)}
+              </Col>
+							<Col span={9}>
+                {
+                  this.state.order === 0 ?
+                  <Button style={{float: "right"}} type="primary" loading={this.state.preparing} onClick={this.onPrepareClick}>{this.state.preparing ? "已准备" : "准备"}</Button> :
+                  <Button style={{float: "right"}} type="primary" onClick={this.onSurrender}>投降</Button>
+                }
+								
 								<Button style={{float: "right"}} type="primary" danger onClick={() => {this.ws.send(JSON.stringify({type:"Leave", from: this.state.username, to: this.state.rival}))}}>离开</Button>
 							</Col>
 						</>
@@ -99,6 +113,7 @@ class Home extends Component {
                             <div className="leftbottom"></div>
                             <div className="rightbottom"></div>
                             <div className={piece}></div>
+                            {(this.state.order !== 0 && this.state.lastI === i && this.state.lastJ === j) && <div className="last-piece"></div>}
                           </div>
                         )
                       }));
@@ -149,6 +164,10 @@ class Home extends Component {
     this.pubsub_invite = PubSub.subscribe(STARTINVITE, (msg, data) => {
       this.ws.send(JSON.stringify({from: this.state.username, to: data, type: "Invite"}));
       this.setState({inviteSpining: true});
+      this.timer = setTimeout(() => {
+        this.setState({inviteSpining: false});
+        message.info('对方暂时未接受邀请');
+      }, 30 * 1000);
     })
     
   }
@@ -174,7 +193,7 @@ class Home extends Component {
     this.ws.onopen = () => {
       this.connectCount++;
       this.ws.send(JSON.stringify({type: "Login", username: this.state.username}));
-	  message.success("连接服务器成功！");
+	    message.success("连接服务器成功！");
     }
     this.ws.onmessage = (e) => {
     //   console.log(e);
@@ -195,7 +214,8 @@ class Home extends Component {
           break;
         case "InviteFail":
           this.setState({inviteSpining: false});
-          message.error("Invite Fail! 对方可能已经加入其他对局，或者对方拒绝")
+          message.error("Invite Fail! 对方可能已经加入其他对局，或者对方拒绝");
+          clearTimeout(this.timer);
           break;
         case "Invited":
           this.setState({modalVisibility: true, inviter: data.from});
@@ -203,17 +223,19 @@ class Home extends Component {
         case "EnterRoom":
           this.setState({rival: data.rival, inviteSpining: false});
           message.success("成功加入房间，对手：" + data.rival);
+          clearTimeout(this.timer);
           break;
         case "Leave":
           // 还原所有设置
           border = new Array(15).fill(0).map(() => {
             return new Array(15).fill(0);
           });
-          this.setState({rival: "", inviter: "", preparing: false, chattings: [], chatInput: "", border: border, myTurn: false});
+          this.setState({rival: "", inviter: "", preparing: false, chattings: [], chatInput: "", border: border, myTurn: false, rivalPrepare: false, order: 0, lastI: -1, lastJ: -1});
           message.error("对手已经离开房间！");
           break;
         case "Prepare":
           message.info(data.from + " is ready to play!");
+          this.setState({rivalPrepare: true});
           break;
         case "Start":
           border = new Array(15).fill(0).map(() => {
@@ -221,18 +243,18 @@ class Home extends Component {
           });
           if (data.order === 1) {
             message.info("游戏开始，你的回合");
-            this.setState({order: 1, myTurn: true, border:border});
+            this.setState({order: 1, myTurn: true, border:border, rivalPrepare: false, lastI: -1, lastJ: -1});
           }
           else {
             message.info("游戏开始，对手回合");
-            this.setState({order: -1, myTurn: false, border:border});
+            this.setState({order: -1, myTurn: false, border:border, rivalPrepare: false, lastI: -1, lastJ: -1});
           }
           break;
         case "End":
           // 销毁preparing
           border = this.state.border;
           border[data.i][data.j] = data.order;
-          this.setState({preparing: false, myTurn: false, border:border});
+          this.setState({preparing: false, myTurn: false, border:border, order: 0, lastI: -1, lastJ: -1});
           message.error("对手落子" + data.i + '-' + data.j + ",你输了！");
           break;
         case "Speak":
@@ -247,8 +269,12 @@ class Home extends Component {
         case "Process":
           border = this.state.border;
           border[data.i][data.j] = data.order;
-          this.setState({border, myTurn: true});
-          message.info("对手落子" + data.i + '-' + data.j + ",你的回合");
+          this.setState({border, myTurn: true, lastI: data.i, lastJ: data.j});
+          // message.info("对手落子" + data.i + '-' + data.j + ",你的回合");
+          break;
+        case "Surrender":
+          this.setState({preparing: false, myTurn: false, order: 0, lastI: -1, lastJ: -1});
+          message.success("对手投降！")
           break;
         default:
           console.log(data);
@@ -278,18 +304,18 @@ class Home extends Component {
   }
 
   onPrepareClick = () => {
-	this.setState({preparing: true});
-	this.ws.send(JSON.stringify({type: "Prepare", from: this.state.username, to: this.state.rival}));
+    this.setState({preparing: true});
+    this.ws.send(JSON.stringify({type: "Prepare", from: this.state.username, to: this.state.rival}));
   }
 
   speakToRival = () => {
 	  let {chatInput, chattings} = this.state;
 	  chattings.push({kind: 0, content: chatInput});
 	  this.setState({chatInput: "", chattings});
-	this.ws.send(JSON.stringify({type:"Speak", to: this.state.rival, msg: chatInput}));
-	setTimeout(() => {
-		this.chatRef.current.scrollTop = this.chatRef.current.scrollHeight;
-	}, 100);
+    this.ws.send(JSON.stringify({type:"Speak", to: this.state.rival, msg: chatInput}));
+    setTimeout(() => {
+      this.chatRef.current.scrollTop = this.chatRef.current.scrollHeight;
+    }, 100);
   }
 
   handleKeyDown = (event) => {
@@ -301,10 +327,10 @@ class Home extends Component {
     return () => {
       let {border, order, username, rival} = this.state;
       border[i][j] = order;
-      this.setState({border: border, myTurn: false});
+      this.setState({border: border, myTurn: false, lastI: i, lastJ: j});
       if (this.checkIsWin(border, i, j, order)) {
         message.success("你赢啦！");
-        this.setState({preparing: false});
+        this.setState({preparing: false, order: 0});
         this.ws.send(JSON.stringify({type: "End", from: username, to: rival, i: i, j: j, order: order}))
       }
       else {
@@ -340,6 +366,12 @@ class Home extends Component {
       tempJ -= direction[1];
     }
     return count;
+  }
+
+  onSurrender = () => {
+    this.ws.send(JSON.stringify({type: "Surrender", to: this.state.rival}));
+    this.setState({preparing: false, myTurn: false, order: 0});
+    message.error("您已投降");
   }
 
 }

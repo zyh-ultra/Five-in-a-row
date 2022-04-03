@@ -147,6 +147,7 @@ wss.on('connection', function connect(ws, req) {
                 break;
             case "Process":
             case "End":
+            case "Surrender":
                 wsA = users.get(wsmsg.to);
                 wsA.send(JSON.stringify(wsmsg));
                 break;
@@ -160,12 +161,19 @@ wss.on('connection', function connect(ws, req) {
         let user = sockets.get(ws);
         let userInfo = usersState.get(user);
         if (userInfo.state !== 0) {
-            let wsRival = users.get(userInfo.rival);
-            // console.log(user, userInfo.rival, "leave")
-            if (wsRival)
-                wsRival.send(JSON.stringify({type: "Leave"}));
-            prepares.delete(user);
-            prepares.delete(userInfo.rival);
+            if (userInfo.rival !== "") {
+                let wsRival = users.get(userInfo.rival);
+                 if (wsRival) {
+                    wsRival.send(JSON.stringify({type: "Leave"}));
+                    let stateRival = usersState.get(userInfo.rival);
+                    stateRival.state = 0;
+                    delete stateRival['rival'];
+                    usersState.set(userInfo.rival, stateRival);
+                }
+                prepares.delete(userInfo.rival);
+            }
+            // console.log(user, userInfo.rival, "leave")    
+            prepares.delete(user);      
         }
         sockets.delete(ws);
         users.delete(user);

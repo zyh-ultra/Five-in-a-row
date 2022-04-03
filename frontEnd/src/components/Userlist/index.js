@@ -24,7 +24,7 @@ export default class Userlist extends Component {
         >
             {this.state.userList.map((user) => {
                 if (user.user === window.username) return;
-                let color, text, disabled = true;
+                let color, disabled = true;
                 switch (user.info.state) {
                     case 0:
                         color = "green";
