@@ -68,7 +68,7 @@ class Login extends Component {
   }
 
   getVerif = () => {
-    axios.get("/verif?t=" + Math.random())
+    axios.get("http://8.130.100.207:5050/verif?t=" + Math.random())
     .then((response) => {
       this.setState({verifyCode: response.data.code})
       this.svgref.current.innerHTML = response.data.svg;
@@ -88,7 +88,7 @@ class Login extends Component {
       this.setState({canLogin: false});
       return;
     }
-    axios.get("/canLogin/" + this.state.username)
+    axios.get("http://8.130.100.207:5050/canLogin/" + this.state.username)
     .then((response) => {
       this.setState({canLogin: response.data.canLogin});
       if (!response.data.canLogin) {

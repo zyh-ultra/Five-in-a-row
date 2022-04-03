@@ -31,7 +31,7 @@ export default class Userlist extends Component {
                         disabled = false;
                         break;
                     case 1:
-                        color = "volcano";
+                        color = "blue";
                         break;
                     case 2:
                         color = "red";
@@ -54,7 +54,7 @@ export default class Userlist extends Component {
 
   getUserList = () => {
     // console.log('getUserList');
-    axios.get("/getUserList")
+    axios.get("http://8.130.100.207:5050/getUserList")
     .then((response) => {
         this.setState({userList: response.data});
     })

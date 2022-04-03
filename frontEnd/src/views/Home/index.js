@@ -17,19 +17,25 @@ class Home extends Component {
 	constructor(props) {
 		super(props);
 		this.chatRef = React.createRef();
+    let border = new Array(15).fill(0).map(() => {
+      return new Array(15).fill(0);
+    });
+    this.state = {
+      username: "",
+      inviteSpining: false,
+      rival: "",
+      modalVisibility: false,
+      inviter: "",
+      preparing: false,
+      order: 0,
+      chattings: [],
+      chatInput: "",
+      border: border,
+      myTurn: false
+    }
 	}
 
-  state = {
-    username: "",
-    inviteSpining: false,
-    rival: "",
-    modalVisibility: false,
-    inviter: "",
-	preparing: false,
-	order: 0,
-	chattings: [],
-	chatInput: "",
-  }
+  
 
   render() {
     return (
@@ -47,7 +53,7 @@ class Home extends Component {
 						</Col> : 
 						<>
 							<Col span={8}>
-								<Avatar style={{ backgroundColor: '#87d068' }} icon={<UserOutlined />} /> {this.state.rival}
+								<Avatar style={{ backgroundColor: '#87d068' }} icon={<UserOutlined />} /> 对手：{this.state.rival}
 							</Col>
 							<Col span={10}>
 								<Button style={{float: "right"}} type="primary" loading={this.state.preparing} onClick={this.onPrepareClick}>准备</Button>
@@ -59,8 +65,47 @@ class Home extends Component {
 				</Row>  
             </Header>
             <Content style={{position: "relative"}}>
-              <div style={{position: "absolute", top: "50%", left: "50%", transform:"translate(-50%, -50%)", width:"calc(90vmin - 64px)", height: "calc(90vmin - 64px)", backgroundColor:"red"}}>
+              <div style={{position: "absolute", top: "50%", left: "50%", transform:"translate(-50%, -50%)", width:"calc(90vmin - 64px)", height: "calc(90vmin - 64px)", backgroundColor:"gold"
+            ,border: "2px solid", boxShadow: "-5px 10px 15px black"}}>
+                <div style={{height: "100%", width: "100%", display: "grid", gridTemplateColumns: "repeat(15, 6.667%)", gridTemplateRow: "repeat(15, 6.667%)"}}>
+                  {
+                    this.state.border.reduce((res, row, i) => {
+                      res.push(...row.map((item, j) => {
+                        let classNames = ["checkerboard"];
+                        if (i !== 0)
+                          classNames.push('have-top');
+                        if (i !== 14)
+                          classNames.push("have-bottom");
+                        if (j !== 0)
+                          classNames.push("have-left");
+                        if (j !== 14)
+                          classNames.push("have-right");
+                        let piece = "";
+                        let func = function () {};
+                        if (item === 0 && this.state.myTurn) {
+                          piece = "piece hold-piece";
+                          func = this.putPiece(i, j);
+                        }
+                        if (item === 1)
+                          piece = "piece black-piece";
+                        if (item === -1)
+                          piece = "piece white-piece";
+                        
 
+                        return (
+                          <div className={classNames.join(" ")} onClick={func} key={i + "-" + j}>
+                            <div className="lefttop"></div>
+                            <div className="righttop"></div>
+                            <div className="leftbottom"></div>
+                            <div className="rightbottom"></div>
+                            <div className={piece}></div>
+                          </div>
+                        )
+                      }));
+                      return res;
+                    }, [])
+                  }
+                </div>
               </div>
             </Content>
           </Layout>
@@ -124,7 +169,7 @@ class Home extends Component {
     if (this.ws) {
       this.ws.close();
     }
-    this.ws = new WebSocket("ws://localhost:5051");
+    this.ws = new WebSocket("ws://8.130.100.207:5051");
     window.ws = this.ws;
     this.ws.onopen = () => {
       this.connectCount++;
@@ -134,6 +179,7 @@ class Home extends Component {
     this.ws.onmessage = (e) => {
     //   console.log(e);
       let data = JSON.parse(e.data);
+      let border;
       switch (data.type) {
         case "LoginError":
           this.connectCount = -1;
@@ -158,30 +204,52 @@ class Home extends Component {
           this.setState({rival: data.rival, inviteSpining: false});
           message.success("成功加入房间，对手：" + data.rival);
           break;
-		case "Leave":
-		  // 还原所有设置
-		  this.setState({rival: "", inviter: "", preparing: false, chattings: [], chatInput: ""});
-		  console.log("Leave");
-		  break;
-		case "Prepare":
-		  message.info(data.from + " is ready to play!");
-		  break;
-		case "Start":
-		  message.info("order" + data.order);
-		  break;
-		case "End":
-		  // 销毁棋盘和preparing
-		  this.setState({preparing: false});
-		  break;
-		case "Speak":
-		  let chattings = this.state.chattings;
-		  chattings.push({kind: 1, content: data.content});
-		//   console.log("Speak" + data.content);
-		setTimeout(() => {
-			this.chatRef.current.scrollTop = this.chatRef.current.scrollHeight;
-		}, 100);
-		  this.setState({chattings: chattings});
-		  break;
+        case "Leave":
+          // 还原所有设置
+          border = new Array(15).fill(0).map(() => {
+            return new Array(15).fill(0);
+          });
+          this.setState({rival: "", inviter: "", preparing: false, chattings: [], chatInput: "", border: border, myTurn: false});
+          message.error("对手已经离开房间！");
+          break;
+        case "Prepare":
+          message.info(data.from + " is ready to play!");
+          break;
+        case "Start":
+          border = new Array(15).fill(0).map(() => {
+            return new Array(15).fill(0);
+          });
+          if (data.order === 1) {
+            message.info("游戏开始，你的回合");
+            this.setState({order: 1, myTurn: true, border:border});
+          }
+          else {
+            message.info("游戏开始，对手回合");
+            this.setState({order: -1, myTurn: false, border:border});
+          }
+          break;
+        case "End":
+          // 销毁preparing
+          border = this.state.border;
+          border[data.i][data.j] = data.order;
+          this.setState({preparing: false, myTurn: false, border:border});
+          message.error("对手落子" + data.i + '-' + data.j + ",你输了！");
+          break;
+        case "Speak":
+          let chattings = this.state.chattings;
+          chattings.push({kind: 1, content: data.content});
+          //   console.log("Speak" + data.content);
+          setTimeout(() => {
+            this.chatRef.current.scrollTop = this.chatRef.current.scrollHeight;
+          }, 100);
+          this.setState({chattings: chattings});
+          break;
+        case "Process":
+          border = this.state.border;
+          border[data.i][data.j] = data.order;
+          this.setState({border, myTurn: true});
+          message.info("对手落子" + data.i + '-' + data.j + ",你的回合");
+          break;
         default:
           console.log(data);
       }
@@ -227,6 +295,51 @@ class Home extends Component {
   handleKeyDown = (event) => {
 	  if (event.keyCode === 13)
 	  	this.speakToRival();
+  }
+
+  putPiece = (i, j) => {
+    return () => {
+      let {border, order, username, rival} = this.state;
+      border[i][j] = order;
+      this.setState({border: border, myTurn: false});
+      if (this.checkIsWin(border, i, j, order)) {
+        message.success("你赢啦！");
+        this.setState({preparing: false});
+        this.ws.send(JSON.stringify({type: "End", from: username, to: rival, i: i, j: j, order: order}))
+      }
+      else {
+        this.ws.send(JSON.stringify({type:"Process", from: username, to: rival, i: i, j: j, order: order}));
+      }
+    }
+  }
+
+  checkIsWin = (border, i, j, order) => {
+    let direction = [[1, 0], [0, 1], [1, 1], [-1, 1]]; // 四方向判断
+    for (let m = 0; m < direction.length; m++) {
+      if (this.getNumbers(border, i, j, order, direction[m]) >= 5) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getNumbers = (border, i, j, order, direction) => {
+    let count = 1;
+    let tempI = i + direction[0];
+    let tempJ = j + direction[1];
+    while (tempI >= 0 && tempI < 15 && tempJ >= 0 && tempJ < 15 && border[tempI][tempJ] === order) {
+      count++;
+      tempI += direction[0];
+      tempJ += direction[1];
+    }
+    tempI = i - direction[0];
+    tempJ = j - direction[1];
+    while (tempI >= 0 && tempI < 15 && tempJ >= 0 && tempJ < 15 && border[tempI][tempJ] === order) {
+      count++;
+      tempI -= direction[0];
+      tempJ -= direction[1];
+    }
+    return count;
   }
 
 }

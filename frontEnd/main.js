@@ -8,7 +8,7 @@ function createWindow () {
   win = new BrowserWindow({
     width: 390,
     height: 350,
-    resizable: false,
+    // resizable: false,
     title: "Five-in-a-row",
     icon: "./public/favicon.ico",
     autoHideMenuBar: true,
@@ -18,9 +18,10 @@ function createWindow () {
       preload:  path.join(__dirname, 'preload.js')
     }   
   })
-  win.loadURL('http://localhost:3000/#/')
+  // win.loadURL('http://localhost:3000/#/')
+  win.loadFile("./build/index.html")
   win.isAlwaysOnTop(true)
-  win.openDevTools();
+  // win.openDevTools();
   // console.log('create window')
 
 

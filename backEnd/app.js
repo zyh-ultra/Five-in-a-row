@@ -1,7 +1,8 @@
 const Koa = require('koa');
 const Router = require('koa-router'); 
 const ws = require('ws');
-const svgCaptcha = require('svg-captcha')
+const svgCaptcha = require('svg-captcha');
+const cors = require('koa2-cors');
 
 //实例化
 const app = new Koa();
@@ -54,6 +55,7 @@ router.get('/getUserList', async (ctx) => {
 })
 
 //启动路由
+app.use(cors());
 app.use(router.routes()); 
 app.use(router.allowedMethods()); 
 
@@ -131,8 +133,8 @@ wss.on('connection', function connect(ws, req) {
                     userBInfo.state = 2;
                     usersState.set(wsmsg.to, userAInfo);
                     usersState.set(wsmsg.from, userBInfo);
-                    wsA.send(JSON.stringify({type: "Start", order: 0}));
-                    ws.send(JSON.stringify({type: "Start", order: 1}));
+                    wsA.send(JSON.stringify({type: "Start", order: 1}));
+                    ws.send(JSON.stringify({type: "Start", order: -1}));
                 }
                 else {
                     prepares.set(wsmsg.from, 0);
@@ -142,6 +144,11 @@ wss.on('connection', function connect(ws, req) {
             case "Speak":
                 wsA = users.get(wsmsg.to);
                 wsA.send(JSON.stringify({type:"Speak", content: wsmsg.msg}));
+                break;
+            case "Process":
+            case "End":
+                wsA = users.get(wsmsg.to);
+                wsA.send(JSON.stringify(wsmsg));
                 break;
             default:
                 console.log(wsmsg)

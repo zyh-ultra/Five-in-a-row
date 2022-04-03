@@ -33,3 +33,71 @@ html {
   max-height: calc(100% - 32px);
   overflow: auto;
 }
+
+.checkerboard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50% 50%;
+  grid-template-rows: 50% 50%;
+}
+
+.have-top .lefttop {
+  border-right: 1px solid;
+}
+
+.have-top .righttop {
+  border-left: 1px solid;
+}
+
+.have-left .lefttop {
+  border-bottom: 1px solid;
+}
+
+.have-left .leftbottom {
+  border-top: 1px solid;
+}
+
+.have-right .rightbottom {
+  border-top: 1px solid;
+}
+
+.have-right .righttop {
+  border-bottom: 1px solid;
+}
+
+.have-bottom .rightbottom {
+  border-left: 1px solid;
+}
+
+.have-bottom .leftbottom {
+  border-right: 1px solid;
+}
+
+.piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 75%;
+  border-radius: 50%;
+  border: 1px solid black;
+}
+
+.hold-piece {
+  display: none;
+}
+
+.checkerboard:hover .hold-piece {
+  display: block;
+}
+
+.black-piece {
+  background-color: black;
+  box-shadow: -5px 5px 10px black;
+}
+
+.white-piece {
+  background-color: white;
+  box-shadow: -5px 5px 10px black;
+}

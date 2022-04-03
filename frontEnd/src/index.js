@@ -8,11 +8,11 @@ import 'antd/dist/antd.css';
 // BrowserRouter
 
 ReactDOM.render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <HashRouter>
       <App/>
-    </HashRouter>
-  </React.StrictMode>,
+    </HashRouter>,
+  // </React.StrictMode>,
   document.getElementById('root')
 );
 
